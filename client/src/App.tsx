@@ -17,6 +17,7 @@ import DevicesPage from "@/pages/devices";
 import DeviceDetailPage from "@/pages/device-detail";
 import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
+import AdminUsersPage from "@/pages/admin-users";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/devices/:id" component={DeviceDetailPage} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/admin/users" component={AdminUsersPage} />
       <Route component={NotFound} />
     </Switch>
   );

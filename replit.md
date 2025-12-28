@@ -21,25 +21,33 @@ Preferred communication style: Simple, everyday language.
 - Uses local username/password authentication (works offline)
 - Password hashing with bcrypt (10 rounds)
 - Session management with PostgreSQL-backed sessions (connect-pg-simple)
-- Login/register page at `/` for unauthenticated users
+- Default admin user: `admin` / `password` (created on first startup)
+- Login page at `/` for unauthenticated users
 
 ### Authorization (ACL)
-- **Roles**: `admin` (full access to all devices) and `user` (access based on permissions)
+- **Roles**: `admin` (full access to all devices and user management) and `user` (access based on permissions)
 - **Device Permissions**: Per-device access control with `canRead`, `canWrite`, `canDelete` flags
-- First user to register becomes admin automatically
+- Admins can create/delete users and manage roles via the Users page
 
 ### Key Auth Files
-- `server/authService.ts` - Local authentication service (register, login, bcrypt hashing)
+- `server/authService.ts` - Local authentication service (create user, login, bcrypt hashing)
 - `server/permissionStorage.ts` - Device permission management
 - `shared/models/auth.ts` - Auth-related types and Zod schemas
-- `client/src/hooks/use-auth.ts` - Frontend auth hook with login/register mutations
-- `client/src/pages/login.tsx` - Login/register page
+- `client/src/hooks/use-auth.ts` - Frontend auth hook with login mutation
+- `client/src/pages/login.tsx` - Login page
+- `client/src/pages/admin-users.tsx` - Admin user management page
 
 ### Auth API Endpoints
-- `POST /api/auth/register` - Register new user (username, password, displayName)
 - `POST /api/auth/login` - Login with username/password
 - `POST /api/auth/logout` - Logout (destroys session)
 - `GET /api/auth/user` - Get current authenticated user
+
+### Admin User Management API Endpoints
+- `GET /api/admin/users` - List all users (admin only)
+- `POST /api/admin/users` - Create new user (admin only)
+- `DELETE /api/admin/users/:userId` - Delete user (admin only)
+- `PATCH /api/admin/users/:userId/role` - Set user role (admin only)
+- `PATCH /api/admin/users/:userId/password` - Reset user password (admin only)
 
 ### Permission API Endpoints
 - `GET /api/me/permissions` - Get current user's device permissions
@@ -111,7 +119,7 @@ Preferred communication style: Simple, everyday language.
 docker compose up -d
 ```
 
-The app will be available at `http://localhost:5000`. The first user to register becomes the admin.
+The app will be available at `http://localhost:5005`. Database migrations run automatically on startup. Login with default credentials: `admin` / `password` (change this after first login).
 
 ### Production Deployment
 For production, set a secure session secret:
@@ -132,6 +140,7 @@ docker compose up -d
 ### Environment Variables
 - `DATABASE_URL` - PostgreSQL connection string (set automatically in docker-compose)
 - `SESSION_SECRET` - Secret key for session encryption (required for production)
+- `COOKIE_SECURE` - Set to `true` if serving over HTTPS (default: `false` for HTTP access)
 
 ### Data Persistence
 Database data is stored in a Docker volume (`postgres_data`). To backup:

@@ -1,10 +1,10 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDeviceSchema, insertVlanSchema, insertLacpGroupSchema, updateInterfaceSchema, registerSchema, loginSchema } from "@shared/schema";
+import { insertDeviceSchema, insertVlanSchema, insertLacpGroupSchema, updateInterfaceSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { permissionStorage } from "./permissionStorage";
-import { registerUser, loginUser, getUserById } from "./authService";
+import { loginUser, getUserById, createUser, deleteUser, updateUserPassword, ensureDefaultAdmin } from "./authService";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -38,7 +38,7 @@ export async function registerRoutes(
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.COOKIE_SECURE === "true",
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         sameSite: "lax",
@@ -60,29 +60,10 @@ export async function registerRoutes(
     next();
   };
 
-  // Auth routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const parsed = registerSchema.parse(req.body);
-      const user = await registerUser(parsed);
-      req.session.userId = user.id;
-      res.status(201).json({
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        role: user.role,
-      });
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors[0]?.message || "Validation error" });
-      }
-      if (error.message === "Username already taken") {
-        return res.status(409).json({ error: "Username already taken" });
-      }
-      res.status(500).json({ error: "Registration failed" });
-    }
-  });
+  // Ensure default admin user exists
+  await ensureDefaultAdmin();
 
+  // Auth routes
   app.post("/api/auth/login", async (req, res) => {
     try {
       const parsed = loginSchema.parse(req.body);
@@ -673,6 +654,72 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update user role" });
+    }
+  });
+
+  // Create user (admin only)
+  app.post("/api/admin/users", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { username, password, displayName, role } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      if (username.length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      if (role && !["admin", "user"].includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Must be 'admin' or 'user'" });
+      }
+      const user = await createUser({ username, password, displayName, role: role || "user" });
+      res.status(201).json({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        role: user.role,
+      });
+    } catch (error: any) {
+      if (error.message === "Username already taken") {
+        return res.status(409).json({ error: "Username already taken" });
+      }
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete("/api/admin/users/:userId", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      // Prevent admin from deleting themselves
+      if (userId === req.user?.id) {
+        return res.status(400).json({ error: "Cannot delete your own account" });
+      }
+      const deleted = await deleteUser(userId);
+      if (!deleted) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Reset user password (admin only)
+  app.patch("/api/admin/users/:userId/password", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      const updated = await updateUserPassword(req.params.userId, password);
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update password" });
     }
   });
 

@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Server, Settings, History, Network } from "lucide-react";
+import { LayoutDashboard, Server, Settings, History, Network, Users } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar,
   SidebarContent,
@@ -36,8 +37,17 @@ const navigationItems = [
   },
 ];
 
+const adminItems = [
+  {
+    title: "Users",
+    url: "/admin/users",
+    icon: Users,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
+  const { isAdmin } = useAuth();
 
   const isActive = (url: string) => {
     if (url === "/") return location === "/";
@@ -81,10 +91,36 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-admin-${item.title.toLowerCase()}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4">
         <div className="text-xs text-muted-foreground">
-          NetConfig Manager v1.0
+          <p>NetConfig Manager v1.0</p>
+          <p className="mt-1">Powered by <a href="https://www.excitenetworks.net" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Excite Networks</a></p>
         </div>
       </SidebarFooter>
     </Sidebar>

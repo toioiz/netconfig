@@ -8,28 +8,18 @@ import { Network, Shield, Settings, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const { login, register, isLoggingIn, isRegistering: isRegisteringMutation } = useAuth();
+  const { login, isLoggingIn } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      if (isRegistering) {
-        await register({ username, password, displayName: displayName || undefined });
-        toast({
-          title: "Account created",
-          description: "Welcome to NetConfig Manager!",
-        });
-      } else {
-        await login({ username, password });
-      }
+      await login({ username, password });
     } catch (error: any) {
-      const message = error?.message || (isRegistering ? "Registration failed" : "Login failed");
+      const message = error?.message || "Login failed";
       toast({
         title: "Error",
         description: message,
@@ -37,8 +27,6 @@ export default function LoginPage() {
       });
     }
   };
-
-  const isPending = isLoggingIn || isRegisteringMutation;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -58,14 +46,9 @@ export default function LoginPage() {
         <div className="max-w-md w-full space-y-8">
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">
-                {isRegistering ? "Create Account" : "Welcome Back"}
-              </CardTitle>
+              <CardTitle className="text-2xl">Welcome Back</CardTitle>
               <CardDescription>
-                {isRegistering 
-                  ? "Register to start managing your network devices"
-                  : "Sign in to manage your network switch configurations"
-                }
+                Sign in to manage your network switch configurations
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -79,7 +62,6 @@ export default function LoginPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
-                    minLength={3}
                     data-testid="input-username"
                   />
                 </div>
@@ -93,49 +75,20 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
                     data-testid="input-password"
                   />
                 </div>
-
-                {isRegistering && (
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Display Name (optional)</Label>
-                    <Input
-                      id="displayName"
-                      type="text"
-                      placeholder="Your name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      data-testid="input-display-name"
-                    />
-                  </div>
-                )}
 
                 <Button 
                   type="submit"
                   className="w-full" 
                   size="lg"
-                  disabled={isPending}
+                  disabled={isLoggingIn}
                   data-testid="button-submit"
                 >
-                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isRegistering ? "Create Account" : "Sign In"}
+                  {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign In
                 </Button>
-
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="link"
-                    onClick={() => setIsRegistering(!isRegistering)}
-                    data-testid="button-toggle-mode"
-                  >
-                    {isRegistering 
-                      ? "Already have an account? Sign in"
-                      : "Need an account? Register"
-                    }
-                  </Button>
-                </div>
               </form>
               
               <div className="grid grid-cols-2 gap-4 pt-6 mt-6 border-t">
@@ -183,7 +136,8 @@ export default function LoginPage() {
 
       <footer className="border-t py-4">
         <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
-          NetConfig Manager - Enterprise Network Configuration Tool
+          <p>NetConfig Manager - Enterprise Network Configuration Tool</p>
+          <p className="mt-1">Powered by <a href="https://www.excitenetworks.net" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Excite Networks</a></p>
         </div>
       </footer>
     </div>
